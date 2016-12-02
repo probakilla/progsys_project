@@ -9,6 +9,13 @@
 
 #ifdef PADAWAN
 
+// Ecrit dans un fichier fd la donnée data
+void write_data (FILE* fd, int data)
+{
+    fwrite (&data, sizeof(data), 1, fd);
+    lseek (fd, 1, SEEK_END);
+}
+
 void map_new (unsigned width, unsigned height)
 {
     map_allocate (width, height);
@@ -50,20 +57,57 @@ void map_new (unsigned width, unsigned height)
 
 void map_save (char *filename)
 {
-    int fd = fopen ("save/saved.map", O_CREAT | O_WRONLY | O_TRUNC, 0640);
+    FILE* fd = fopen (filename, O_CREAT | O_WRONLY | O_TRUNC, 0640);
 
     // Ecrit respectivement dans le fichier de sauvegarde les dimensions de la carte et le nombre d'objets diférents.
-    write_data (fd, map_width ());
-    write_data (fd, map_height ());
-    write_data (fd, map_objects ());
 
+    fwrite (&map_width(), sizeof (int), 1, fd);
+    fwrite (&map_heigt(), sizeof (int), 1, fd);
+    fwrite (&map_objects(), sizeof (int), 1, fd);
+    lseek (fd, 1, SEEK_END); // ajout un espace après le premier bloc de données.
+
+    int cpt = 0;
+    int t[map_objects()];
+    for (int i = 0; i < map_objects(); ++i)
+	t[i] = -2;
+    
     for (int y = 0; y < map_height () - 1; ++y)
 	for (int x = 0; x < map_widht (); ++x)
 	{
-	    write_data (fd, x);
-	    write_data (fd, y);
-	    write_data (fd, map_get(x, y));
+	    /*
+	      write_data (fd, x);
+	      write_data (fd, y);
+	      write_data (fd, map_get(x,
+	    */
+	    fwrite (&x, sizeof (x), 1, fd);
+	    fwrite (&y, sizeof (y), 1, fd);
+	    fwrite (&map_get (x, y), 1, fd);
+	    if (cpt == 0)
+	    {
+		t [0] = map_get (x, y);
+		++cpt;
+	    }
+	    for (int i = 0; i < cpt; ++i)
+	    {
+		if (t[i] == map_get (x, y))
+		    break;  
+		else if (t[i] == -2)
+		{
+		    t[i] = map_get (x, y);
+		    break;
+		}	      	    
+	    }			 		
 	}
+    lseek (fd, 1, SEEK_END);
+    
+    for (int i = 0; i < map_objects(); ++i)
+    {
+	char* name = map_get_name(t[i]);
+	while (fwrite(&name, sizeof(name), 1, fd) > 0);
+	fwrite (fd, x); //
+	write_data (fd, x);
+	write_data (fd, x);
+    }
     
     fprintf (stderr, "Sorry: Map save is not yet implemented\n");
 }
@@ -72,12 +116,6 @@ void map_load (char *filename)
 {
     // TODO
     exit_with_error ("Map load is not yet implemented\n");
-}
-
-// Ecrit dans un fichier fd la donnée data
-void write_data (int fd, int data)
-{
-    fwrite (&data, sizeof(data), 1, fd);
 }
 
 #endif
