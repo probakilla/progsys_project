@@ -55,13 +55,11 @@ void map_save (char *filename)
     filename = "maps/saved.map";
     FILE* fd = fopen (filename, "w+");
 
-
     // Ecrit respectivement dans le fichier de sauvegarde les dimensions de la carte et le nombre d'objets diférents.
     int width = map_width ();
     int height = map_height ();
     int nb_objects = map_objects ();
-    int i, y, x, name_length, cpt, object, sprites, solidity, destructible, collectible, generator;
-    char buf;
+    int i, y, x, name_length, object, sprites, solidity, destructible, collectible, generator;
     
     fwrite (&width, sizeof (width), 1, fd);
     fwrite (&height, sizeof (height), 1, fd);
@@ -73,26 +71,12 @@ void map_save (char *filename)
 	object = i;
 	fwrite (&object, sizeof (object), 1, fd);
 	name_length = strlen (map_get_name (object));
-	char * name = malloc (name_length * sizeof (char));
+	char *name = calloc (name_length , sizeof (char));
 	strcpy (name, map_get_name (object));
-	//name = map_get_name (object);
 	
 	fwrite (&name_length, sizeof (name_length), 1, fd);
-	for (int j = 0; j < name_length; ++j)
-	    fwrite (&name[j], sizeof (name[j]), 1, fd);
-	//fwrite (name, name_length * sizeof (char), 1, fd);
-	/*
-	strcpy (map_get_name (object), name);
-	cpt = 0;
-	
-	do
-	{
-	    buf = name [cpt];
-	    fwrite (&buf, sizeof(buf), 1, fd);
-	    ++ cpt;
-	}
-	while (buf != '\0');
-	*/
+	fwrite (name, name_length * sizeof (*name), 1, fd);
+	free (name);
 	
 	sprites = map_get_frames (object);
 	solidity = map_get_solidity (object);
@@ -107,7 +91,7 @@ void map_save (char *filename)
 	fwrite (&generator, sizeof (generator), 1, fd);
     }
     
-    for (y = 0; y < height - 1; ++y)
+    for (y = 0; y < height; ++y)
 	for (x = 0; x < width; ++x)
 	{
 	    object = map_get (x, y);
@@ -115,6 +99,7 @@ void map_save (char *filename)
 	    fwrite (&y, sizeof (y), 1, fd);
 	    fwrite (&object, sizeof(object), 1, fd);		 		
 	}
+    fclose (fd);
     printf ("You saved the map in:  %s. \n", filename);
 }
 
@@ -122,8 +107,7 @@ void map_load (char *filename)
 {
     FILE * fd = fopen (filename, "r+");
 
-    int i, cpt, width, height, x, y, name_length, nb_objects, object, sprites, solidity, destructible, collectible, generator;
-    char buf;
+    int i, width, height, x, y, name_length, nb_objects, object, sprites, solidity, destructible, collectible, generator;
 
     // Charge les dimentions de la carte
     fread (&width, sizeof(width), 1, fd);
@@ -139,28 +123,15 @@ void map_load (char *filename)
     {
 	fread (&object, sizeof (object), 1, fd);
 	fread (&name_length, sizeof (name_length), 1, fd);
-	char * name = malloc (name_length * sizeof (char));
-	for (int j = 0; j < name_length; ++j)
-	    fread (&name[j], sizeof (name[j]), 1, fd);
-	printf ("%d \n", name_length);
-	printf ("%s \n", name);
-	/*
-	cpt = 0;
-	do
-	{
-	    fread (&buf, sizeof (buf), 1, fd);
-	    name [cpt] = buf;
-	    ++ cpt;
-	}
-	while (buf != '\0');*/
+	char * name = calloc (name_length, sizeof (char));
+
+	fread (name, name_length * sizeof (*name), 1, fd);
+
 	fread (&sprites, sizeof (sprites), 1, fd);
 	fread (&solidity, sizeof (solidity), 1, fd);
 	fread (&destructible, sizeof (destructible), 1, fd);
 	fread (&collectible, sizeof (collectible), 1, fd);
 	fread (&generator, sizeof (generator), 1, fd);
-	printf ("%d \n", solidity);
-//	printf ("%d \n", name_length);
-//      printf ("%s \n", name);
 	if (!destructible && !collectible && !generator)
 	{
 	    map_object_add (name, sprites, solidity);
@@ -177,6 +148,8 @@ void map_load (char *filename)
 	    map_object_add (name, sprites, solidity | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
 	else if (destructible && collectible && generator)
 	    map_object_add (name, sprites, solidity | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+
+	free(name);
     }
     
     map_object_end ();
@@ -189,10 +162,8 @@ void map_load (char *filename)
 	if (object != -1)
 	    map_set (x, y, object);
     }
-    
+    fclose (fd);
 
-    
-    exit_with_error ("Map load is not yet implemented\n");
 }
 
 #endif
